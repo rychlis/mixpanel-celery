@@ -1,12 +1,12 @@
-from __future__ import absolute_import, unicode_literals
+
 
 import base64
 import datetime
-import httplib
+import http.client
 import json
 import logging
 import socket
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 from celery.task import Task
 from celery.registry import tasks
@@ -59,7 +59,7 @@ class EventTracker(Task):
             effective_level = l.logger.getEffectiveLevel()
 
         if effective_level == logging.DEBUG:
-            httplib.HTTPConnection.debuglevel = 1
+            http.client.HTTPConnection.debuglevel = 1
 
         params = self._build_params(event_name, properties, **kwargs)
         l.debug('params: <%r>' % (params,))
@@ -92,7 +92,7 @@ class EventTracker(Task):
 
         # Wish we could use python 2.6's httplib timeout support
         socket.setdefaulttimeout(mp_settings.MIXPANEL_API_TIMEOUT)
-        return httplib.HTTPConnection(server)
+        return http.client.HTTPConnection(server)
 
     def _build_params(self, event, properties, **kwargs):
         """
@@ -115,7 +115,7 @@ class EventTracker(Task):
             test = mp_settings.MIXPANEL_TEST_PRIORITY
         if test:
             data['test'] = '1'
-        return urllib.urlencode(data)
+        return urllib.parse.urlencode(data)
 
     def _send_request(self, connection, params):
         """
@@ -128,7 +128,7 @@ class EventTracker(Task):
             connection.request('GET', '%s?%s' % (self.endpoint, params))
 
             response = connection.getresponse()
-        except socket.error, message:
+        except socket.error as message:
             raise self.FailedEventRequest(
                 "The tracking request failed with a socket error. "
                 "Message: [%s]" % message
@@ -222,9 +222,9 @@ class PeopleTracker(EventTracker):
 
         # Build the params dict.
         params = {}
-        for k, v in self.required_params.items():
+        for k, v in list(self.required_params.items()):
             params.setdefault(v, kwargs.pop(k))
-        for k, v in self.optional_params.items():
+        for k, v in list(self.optional_params.items()):
             if k in kwargs:
                 params.setdefault(v, kwargs.pop(k))
 
