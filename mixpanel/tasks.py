@@ -109,7 +109,7 @@ class EventTracker(Task):
         Encodes data and returns the urlencoded parameters.
         """
         key = mp_settings.MIXPANEL_DATA_VARIABLE
-        value = base64.b64encode(json.dumps(params))
+        value = base64.b64encode(json.dumps(params).encode('utf-8'))
         data = {key: value}
         if test is None:
             test = mp_settings.MIXPANEL_TEST_PRIORITY
@@ -143,7 +143,7 @@ class EventTracker(Task):
 
         # Successful requests will generate a log
         response_data = response.read()
-        if response_data != '1':
+        if response_data != b'1':
             return False
 
         return True
