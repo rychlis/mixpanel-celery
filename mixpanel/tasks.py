@@ -117,15 +117,16 @@ class EventTracker(Task):
             data['test'] = '1'
         return urllib.parse.urlencode(data)
 
-    def _send_request(self, connection, params):
+    def _send_request(self, connection, params, custom_url=None):
         """
         Send a an event with its properties to the api server.
 
         Returns ``True`` if the event was logged by Mixpanel.
         """
+        url = '%s?%s' % (self.endpoint, params) if custom_url is None else custom_url
 
         try:
-            connection.request('GET', '%s?%s' % (self.endpoint, params))
+            connection.request('GET', url)
 
             response = connection.getresponse()
         except socket.error as message:
@@ -133,6 +134,9 @@ class EventTracker(Task):
                 "The tracking request failed with a socket error. "
                 "Message: [%s]" % message
             )
+
+        if response.status in (301, 302) and custom_url is None:
+            return self._send_request(connection, params, custom_url=response.headers['Location'])
 
         if response.status != 200 or response.reason != 'OK':
             raise self.FailedEventRequest(
