@@ -117,7 +117,7 @@ class EventTracker(Task):
             data['test'] = '1'
         return urllib.parse.urlencode(data)
 
-    def _send_request(self, connection, params, custom_url=None):
+    def _send_request(self, connection, params, custom_url=None, redirects=None):
         """
         Send a an event with its properties to the api server.
 
@@ -135,9 +135,14 @@ class EventTracker(Task):
                 "Message: [%s]" % message
             )
 
-        if response.status in (301, 302) and custom_url is None:
-            conn = self._get_connection()
-            return self._send_request(conn, params, custom_url=response.headers['Location'])
+        if response.status in (301, 302):
+            if redirects is None:
+                redirects = []
+            new_location = response.headers['Location']
+            if new_location not in redirects:
+                conn = self._get_connection()
+                redirects.append(new_location)
+                return self._send_request(conn, params, custom_url=new_location, redirects=redirects)
 
         if response.status != 200 or response.reason != 'OK':
             raise self.FailedEventRequest(
