@@ -136,7 +136,8 @@ class EventTracker(Task):
             )
 
         if response.status in (301, 302) and custom_url is None:
-            return self._send_request(connection, params, custom_url=response.headers['Location'])
+            conn = self._get_connection()
+            return self._send_request(conn, params, custom_url=response.headers['Location'])
 
         if response.status != 200 or response.reason != 'OK':
             raise self.FailedEventRequest(
